@@ -14,7 +14,7 @@ echo $PATH
 # Generate the version, parser, tokenizer and AST from the ASDL files.
 mkdir "tarball"
 pushd "tarball"
-cmake .. --trace-expand
+cmake .. --trace-expand -DWITH_ZLIB=NO
 popd
 rm -rf "tarball"
 
