@@ -5,11 +5,16 @@ trace on
 
 import argparse
 
+# <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+env
+echo $LD_LIBRARY_PATH
+echo $PATH
+# >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 
 # Generate the version, parser, tokenizer and AST from the ASDL files.
 mkdir "tarball"
 pushd "tarball"
-cmake ..
+cmake .. --trace-expand
 popd
 rm -rf "tarball"
 
