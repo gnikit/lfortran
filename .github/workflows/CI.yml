@@ -535,7 +535,10 @@ jobs:
             -GNinja \
             -DCMAKE_BUILD_TYPE=Release \
             -DWITH_LLVM=yes \
+            -DWITH_XEUS=yes \
             -DLFORTRAN_STATIC_BIN=yes \
+            -DCMAKE_PREFIX_PATH=$CONDA_PREFIX \
+            -DCMAKE_INSTALL_PREFIX=$CONDA_PREFIX \
             -DCMAKE_CXX_FLAGS_RELEASE="-Wall -Wextra -O3 -funroll-loops -DNDEBUG"
 
       - name: Build
