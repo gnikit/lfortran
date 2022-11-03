@@ -542,7 +542,7 @@ jobs:
         shell: bash -l {0}
         run: |
           cd lfortran-*
-          cmake --build . -j1
+          cmake --build . --target install
 
       - name: Pack Binaries
         shell: bash -l {0}
