@@ -70,7 +70,7 @@ std::string pickle(int token, const LFortran::YYSTYPE &yystype,
             t += "_" + yystype.int_suffix.int_kind.str();
         }
     } else if (token == yytokentype::TK_STRING) {
-        t = t + " " + "\"" + yystype.string.str() + "\"";
+        t = t + " " + "\"" + str_escape_c(yystype.string.str()) + "\"";
     } else if (token == yytokentype::TK_BOZ_CONSTANT) {
         t += " " + yystype.string.str();
     }
@@ -114,7 +114,8 @@ std::string compare2str(const cmpopType type)
     throw std::runtime_error("Unknown type");
 }
 
-class PickleVisitor : public PickleBaseVisitor<PickleVisitor>
+/********************** AST Pickle *******************/
+class ASTPickleVisitor : public PickleBaseVisitor<ASTPickleVisitor>
 {
 public:
     void visit_BinOp(const BinOp_t &x) {
@@ -182,7 +183,7 @@ public:
 };
 
 std::string pickle(LFortran::AST::ast_t &ast, bool colors, bool indent) {
-    PickleVisitor v;
+    ASTPickleVisitor v;
     v.use_colors = colors;
     v.indent = indent;
     v.visit_ast(ast);
@@ -190,14 +191,30 @@ std::string pickle(LFortran::AST::ast_t &ast, bool colors, bool indent) {
 }
 
 std::string pickle(AST::TranslationUnit_t &ast, bool colors, bool indent) {
-    PickleVisitor v;
+    return pickle((AST::ast_t&)(ast), colors, indent);
+}
+
+/********************** AST Pickle Tree *******************/
+class ASTTreeVisitor : public AST::TreeBaseVisitor<ASTTreeVisitor>
+{
+public:
+    std::string get_str() {
+        return s;
+    }
+};
+
+std::string pickle_tree(AST::ast_t &ast, bool colors) {
+    ASTTreeVisitor v;
     v.use_colors = colors;
-    v.indent = indent;
-    v.visit_ast((AST::ast_t&)(ast));
+    v.visit_ast(ast);
     return v.get_str();
 }
 
-/********************** Pickle Json *******************/
+std::string pickle_tree(AST::TranslationUnit_t &ast, bool colors) {
+    return pickle_tree((AST::ast_t &)ast, colors);
+}
+
+/********************** AST Pickle Json *******************/
 class ASTJsonVisitor :
     public LFortran::AST::JsonBaseVisitor<ASTJsonVisitor>
 {
@@ -209,171 +226,15 @@ public:
     }
 };
 
-std::string pickle_json(LFortran::AST::ast_t &ast, LocationManager &lm) {
+std::string pickle_json(LFortran::AST::ast_t &ast, LocationManager &lm, bool no_loc) {
     ASTJsonVisitor v(lm);
+    v.no_loc = no_loc;
     v.visit_ast(ast);
     return v.get_str();
 }
 
-std::string pickle_json(LFortran::AST::TranslationUnit_t &ast, LocationManager &lm) {
-    return pickle_json((LFortran::AST::ast_t &)ast, lm);
-}
-
-/* -----------------------------------------------------------------------*/
-// ASR
-
-class ASRPickleVisitor :
-    public ASR::PickleBaseVisitor<ASRPickleVisitor>
-{
-public:
-    bool show_intrinsic_modules;
-
-    std::string get_str() {
-        return s;
-    }
-    void visit_symbol(const ASR::symbol_t &x) {
-        s.append(ASRUtils::symbol_parent_symtab(&x)->get_counter());
-        s.append(" ");
-        if (use_colors) {
-            s.append(color(fg::yellow));
-        }
-        s.append(ASRUtils::symbol_name(&x));
-        if (use_colors) {
-            s.append(color(fg::reset));
-        }
-    }
-    void visit_IntegerConstant(const ASR::IntegerConstant_t &x) {
-        s.append("(");
-        if (use_colors) {
-            s.append(color(style::bold));
-            s.append(color(fg::magenta));
-        }
-        s.append("IntegerConstant");
-        if (use_colors) {
-            s.append(color(fg::reset));
-            s.append(color(style::reset));
-        }
-        s.append(" ");
-        if (use_colors) {
-            s.append(color(fg::cyan));
-        }
-        s.append(std::to_string(x.m_n));
-        if (use_colors) {
-            s.append(color(fg::reset));
-        }
-        s.append(" ");
-        this->visit_ttype(*x.m_type);
-        s.append(")");
-    }
-    void visit_Module(const ASR::Module_t &x) {
-        if (!show_intrinsic_modules &&
-                    startswith(x.m_name, "lfortran_intrinsic_")) {
-            s.append("(");
-            if (use_colors) {
-                s.append(color(style::bold));
-                s.append(color(fg::magenta));
-            }
-            s.append("IntrinsicModule");
-            if (use_colors) {
-                s.append(color(fg::reset));
-                s.append(color(style::reset));
-            }
-            s.append(" ");
-            s.append(x.m_name);
-            s.append(")");
-        } else {
-            ASR::PickleBaseVisitor<ASRPickleVisitor>::visit_Module(x);
-        };
-    }
-};
-
-std::string pickle(ASR::asr_t &asr, bool colors, bool indent,
-        bool show_intrinsic_modules) {
-    ASRPickleVisitor v;
-    v.use_colors = colors;
-    v.indent = indent;
-    v.show_intrinsic_modules = show_intrinsic_modules;
-    v.visit_asr(asr);
-    return v.get_str();
-}
-
-std::string pickle(ASR::TranslationUnit_t &asr, bool colors, bool indent, bool show_intrinsic_modules) {
-    return pickle((ASR::asr_t &)asr, colors, indent, show_intrinsic_modules);
-}
-
-/********************** Pickle Json *******************/
-class ASRJsonVisitor :
-    public ASR::JsonBaseVisitor<ASRJsonVisitor>
-{
-public:
-    using ASR::JsonBaseVisitor<ASRJsonVisitor>::JsonBaseVisitor;
-
-    std::string get_str() {
-        return s;
-    }
-
-    void visit_symbol(const ASR::symbol_t &x) {
-        s.append("\"");
-        s.append(ASRUtils::symbol_name(&x));
-        s.append(" (SymbolTable");
-        s.append(ASRUtils::symbol_parent_symtab(&x)->get_counter());
-        s.append(")\"");
-    }
-
-    void visit_Module(const ASR::Module_t &x) {
-        s.append("{");
-        inc_indent(); s.append("\n" + indtd);
-        s.append("\"node\": \"Module\"");
-        s.append(",\n" + indtd);
-        s.append("\"fields\": {");
-        inc_indent(); s.append("\n" + indtd);
-        s.append("\"name\": ");
-        s.append("\"" + std::string(x.m_name) + "\"");
-        s.append(",\n" + indtd);
-        s.append("\"dependencies\": ");
-        s.append("[");
-        if (x.n_dependencies > 0) {
-            inc_indent(); s.append("\n" + indtd);
-            for (size_t i=0; i<x.n_dependencies; i++) {
-                s.append("\"" + std::string(x.m_dependencies[i]) + "\"");
-                if (i < x.n_dependencies-1) {
-                    s.append(",\n" + indtd);
-                };
-            }
-            dec_indent(); s.append("\n" + indtd);
-        }
-        s.append("]");
-        s.append(",\n" + indtd);
-        s.append("\"loaded_from_mod\": ");
-        if (x.m_loaded_from_mod) {
-            s.append("true");
-        } else {
-            s.append("false");
-        }
-        s.append(",\n" + indtd);
-        s.append("\"intrinsic\": ");
-        if (x.m_intrinsic) {
-            s.append("true");
-        } else {
-            s.append("false");
-        }
-        dec_indent(); s.append("\n" + indtd);
-        s.append("}");
-        s.append(",\n" + indtd);
-        append_location(s, x.base.base.loc.first, x.base.base.loc.last);
-        dec_indent(); s.append("\n" + indtd);
-        s.append("}");
-    }
-};
-
-std::string pickle_json(ASR::asr_t &asr, LocationManager &lm) {
-    ASRJsonVisitor v(lm);
-    v.visit_asr(asr);
-    return v.get_str();
-}
-
-std::string pickle_json(ASR::TranslationUnit_t &asr, LocationManager &lm) {
-    return pickle_json((ASR::asr_t &)asr, lm);
+std::string pickle_json(LFortran::AST::TranslationUnit_t &ast, LocationManager &lm, bool no_loc) {
+    return pickle_json((LFortran::AST::ast_t &)ast, lm, no_loc);
 }
 
 } // namespace LCompilers::LFortran

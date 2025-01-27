@@ -1,0 +1,290 @@
+(TranslationUnit
+    (SymbolTable
+        1
+        {
+            main:
+                (Program
+                    (SymbolTable
+                        2
+                        {
+                            __1_k:
+                                (Variable
+                                    2
+                                    __1_k
+                                    []
+                                    Local
+                                    ()
+                                    ()
+                                    Default
+                                    (Integer 4)
+                                    ()
+                                    Source
+                                    Public
+                                    Required
+                                    .false.
+                                    .false.
+                                ),
+                            a:
+                                (Variable
+                                    2
+                                    a
+                                    []
+                                    Local
+                                    ()
+                                    ()
+                                    Default
+                                    (Array
+                                        (Real 4)
+                                        [((IntegerConstant 1 (Integer 4) Decimal)
+                                        (IntegerConstant 2 (Integer 4) Decimal))]
+                                        FixedSizeArray
+                                    )
+                                    ()
+                                    Source
+                                    Public
+                                    Required
+                                    .false.
+                                    .false.
+                                ),
+                            b:
+                                (Variable
+                                    2
+                                    b
+                                    []
+                                    Local
+                                    ()
+                                    ()
+                                    Default
+                                    (Array
+                                        (Real 4)
+                                        [((IntegerConstant 1 (Integer 4) Decimal)
+                                        (IntegerConstant 2 (Integer 4) Decimal))]
+                                        FixedSizeArray
+                                    )
+                                    ()
+                                    Source
+                                    Public
+                                    Required
+                                    .false.
+                                    .false.
+                                )
+                        })
+                    main
+                    []
+                    [(Assignment
+                        (ArrayItem
+                            (Var 2 a)
+                            [(()
+                            (IntegerConstant 1 (Integer 4) Decimal)
+                            ())]
+                            (Real 4)
+                            ColMajor
+                            ()
+                        )
+                        (RealConstant
+                            1.000000
+                            (Real 4)
+                        )
+                        ()
+                    )
+                    (Assignment
+                        (ArrayItem
+                            (Var 2 a)
+                            [(()
+                            (IntegerConstant 2 (Integer 4) Decimal)
+                            ())]
+                            (Real 4)
+                            ColMajor
+                            ()
+                        )
+                        (RealConstant
+                            2.000000
+                            (Real 4)
+                        )
+                        ()
+                    )
+                    (Assignment
+                        (ArrayItem
+                            (Var 2 b)
+                            [(()
+                            (IntegerConstant 1 (Integer 4) Decimal)
+                            ())]
+                            (Real 4)
+                            ColMajor
+                            ()
+                        )
+                        (RealConstant
+                            0.500000
+                            (Real 4)
+                        )
+                        ()
+                    )
+                    (Assignment
+                        (ArrayItem
+                            (Var 2 b)
+                            [(()
+                            (IntegerConstant 2 (Integer 4) Decimal)
+                            ())]
+                            (Real 4)
+                            ColMajor
+                            ()
+                        )
+                        (RealConstant
+                            3.500000
+                            (Real 4)
+                        )
+                        ()
+                    )
+                    (DoLoop
+                        ()
+                        ((Var 2 __1_k)
+                        (ArrayBound
+                            (Var 2 a)
+                            (IntegerConstant 1 (Integer 4) Decimal)
+                            (Integer 4)
+                            LBound
+                            ()
+                        )
+                        (ArrayBound
+                            (Var 2 a)
+                            (IntegerConstant 1 (Integer 4) Decimal)
+                            (Integer 4)
+                            UBound
+                            ()
+                        )
+                        (IntegerConstant 1 (Integer 4) Decimal))
+                        [(If
+                            (RealCompare
+                                (ArrayItem
+                                    (Var 2 a)
+                                    [(()
+                                    (Var 2 __1_k)
+                                    ())]
+                                    (Real 4)
+                                    RowMajor
+                                    ()
+                                )
+                                Gt
+                                (ArrayItem
+                                    (Var 2 b)
+                                    [(()
+                                    (Var 2 __1_k)
+                                    ())]
+                                    (Real 4)
+                                    RowMajor
+                                    ()
+                                )
+                                (Logical 4)
+                                ()
+                            )
+                            [(Assignment
+                                (ArrayItem
+                                    (Var 2 a)
+                                    [(()
+                                    (Var 2 __1_k)
+                                    ())]
+                                    (Real 4)
+                                    RowMajor
+                                    ()
+                                )
+                                (RealConstant
+                                    1.500000
+                                    (Real 4)
+                                )
+                                ()
+                            )]
+                            []
+                        )]
+                        []
+                    )
+                    (Print
+                        (StringFormat
+                            ()
+                            [(Var 2 a)]
+                            FormatFortran
+                            (String -1 0 () PointerString)
+                            ()
+                        )
+                    )
+                    (If
+                        (RealCompare
+                            (IntrinsicElementalFunction
+                                Abs
+                                [(RealBinOp
+                                    (ArrayItem
+                                        (Var 2 a)
+                                        [(()
+                                        (IntegerConstant 1 (Integer 4) Decimal)
+                                        ())]
+                                        (Real 4)
+                                        ColMajor
+                                        ()
+                                    )
+                                    Sub
+                                    (RealConstant
+                                        1.500000
+                                        (Real 4)
+                                    )
+                                    (Real 4)
+                                    ()
+                                )]
+                                0
+                                (Real 4)
+                                ()
+                            )
+                            Gt
+                            (RealConstant
+                                0.000000
+                                (Real 4)
+                            )
+                            (Logical 4)
+                            ()
+                        )
+                        [(ErrorStop
+                            ()
+                        )]
+                        []
+                    )
+                    (If
+                        (RealCompare
+                            (IntrinsicElementalFunction
+                                Abs
+                                [(RealBinOp
+                                    (ArrayItem
+                                        (Var 2 a)
+                                        [(()
+                                        (IntegerConstant 2 (Integer 4) Decimal)
+                                        ())]
+                                        (Real 4)
+                                        ColMajor
+                                        ()
+                                    )
+                                    Sub
+                                    (RealConstant
+                                        2.000000
+                                        (Real 4)
+                                    )
+                                    (Real 4)
+                                    ()
+                                )]
+                                0
+                                (Real 4)
+                                ()
+                            )
+                            Gt
+                            (RealConstant
+                                0.000000
+                                (Real 4)
+                            )
+                            (Logical 4)
+                            ()
+                        )
+                        [(ErrorStop
+                            ()
+                        )]
+                        []
+                    )]
+                )
+        })
+    []
+)

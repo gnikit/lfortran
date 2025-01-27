@@ -1209,16 +1209,25 @@ public:
         r += "implicit";
         r += syn();
         r += " ";
+        if (x.n_specs > 0) {
+            for (size_t i=0; i<x.n_specs; i++) {
+                visit_implicit_spec(*x.m_specs[i]);
+                r += s;
+                if (i < x.n_specs-1) r.append(",");
+            }
+        }
+        if(x.m_trivia){
+            r += print_trivia_after(*x.m_trivia);
+        } else {
+            r.append("\n");
+        }
+        s = r;
+    }
+
+     void visit_ImplicitSpec(const ImplicitSpec_t &x) {
+        std::string r;
         visit_decl_attribute(*x.m_type);
         r += s;
-        if (x.n_kind > 0) {
-            r += " (";
-            for (size_t i=0; i<x.n_kind; i++) {
-                visit_letter_spec(*x.m_kind[i]);
-                r += s;
-            }
-            r += ")";
-        }
         if (x.n_specs > 0) {
             r += " (";
             for (size_t i=0; i<x.n_specs; i++) {
@@ -1228,12 +1237,7 @@ public:
             }
             r += ")";
         }
-        if(x.m_trivia){
-            r += print_trivia_after(*x.m_trivia);
-        } else {
-            r.append("\n");
-        }
-        s = r;
+	s = r;
     }
 
     void visit_LetterSpec(const LetterSpec_t &x) {
@@ -1344,6 +1348,10 @@ public:
                 if (i < x.n_codim-1) r.append(",");
             }
             r.append("]");
+        }
+        if (x.m_length) {
+            visit_expr(*x.m_length);
+            r += symbol2str(x.m_sym) + s;
         }
         if (x.m_initializer) {
             visit_expr(*x.m_initializer);
@@ -1533,7 +1541,7 @@ public:
 
             // Determine proper canonical printing of kinds
             // TODO: Move this part into a separate AST pass
-            kind_item_t k[2];
+            kind_item_t k[2] = {};
             LCOMPILERS_ASSERT(x.n_kind <= 2);
             for (size_t i=0; i<x.n_kind; i++) {
                 k[i] = x.m_kind[i];
@@ -1570,6 +1578,12 @@ public:
                 r += s;
                 if (i < x.n_kind-1) r.append(", ");
             }
+            r.append(")");
+        }
+        if (x.m_attr) {
+            r.append("(");
+            this->visit_decl_attribute(*x.m_attr);
+            r.append(s);
             r.append(")");
         }
         if (x.m_name) {
@@ -1856,6 +1870,9 @@ public:
             if (x.m_args[i].m_end) {
                 this->visit_expr(*x.m_args[i].m_end);
                 r.append(s);
+            } else if (x.m_args[i].m_label > 0) {
+                r += "*";
+                r.append(std::to_string(x.m_args[i].m_label));
             } else {
                 r += ":";
             }
@@ -3947,7 +3964,11 @@ public:
     }
 
     void visit_arg(const arg_t &x) {
-        s = std::string(x.m_arg);
+        if (x.m_arg) {
+            s = std::string(x.m_arg);
+        } else {
+            s = "*";
+        }
     }
 
     void visit_keyword(const keyword_t &x) {

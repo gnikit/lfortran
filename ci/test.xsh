@@ -47,10 +47,10 @@ if not $IS_WIN:
     mkdir build-lfortran-llvm
     cd build-lfortran-llvm
     $FC="../../src/bin/lfortran"
-    cmake -DLFORTRAN_BACKEND=llvm ..
+    cmake -DLFORTRAN_BACKEND=llvm -DCURRENT_BINARY_DIR=. ..
     make
     ctest -L llvm
     cd ..
 
-    ./run_tests.py -b llvm2
-    ./run_tests.py -b llvm_rtlib
+    ./run_tests.py -b llvm2 llvm_rtlib llvm_nopragma
+    ./run_tests.py -b llvm2 llvm_rtlib llvm_nopragma -f
