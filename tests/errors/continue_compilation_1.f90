@@ -842,4 +842,9 @@ program continue_compilation_1
         character(kind=4) :: c4
         print *, min(c1, c4)
     end subroutine
+
+    subroutine sub_undefined_goto_label()
+        implicit none
+        goto 20  ! {Error} Label 20 is not defined
+    end subroutine
 end program

@@ -1725,3 +1725,9 @@ semantic error: The `MIN` intrinsic requires all CHARACTER arguments to have the
     |
 843 |         print *, min(c1, c4)
     |                  ^^^^^^^^^^^ 
+
+semantic error: Label 20 is not defined
+   --> tests/errors/continue_compilation_1.f90:848:9
+    |
+848 |         goto 20  ! {Error} Label 20 is not defined
+    |         ^^^^^^^ 
