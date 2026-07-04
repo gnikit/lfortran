@@ -3037,14 +3037,15 @@ namespace Eoshift {
                 shifting_dim = (int)dim_val;
             }
         }
-        declare_basic_variables("_lcompilers_eoshift");
         bool is_shift_array = ASRUtils::is_array(arg_types[1]);
+        std::string eoshift_fn_name = "_lcompilers_eoshift";
         if (is_shift_array) {
-            fn_name += "_array_shift";
+            eoshift_fn_name += "_array_shift";
         }
         if (shifting_dim != 1) {
-            fn_name += "_dim" + std::to_string(shifting_dim);
+            eoshift_fn_name += "_dim" + std::to_string(shifting_dim);
         }
+        declare_basic_variables(eoshift_fn_name);
         fill_func_arg("array", duplicate_type_with_empty_dims(al, arg_types[0]));
         fill_func_arg("shift", arg_types[1]);
         fill_func_arg("boundary", arg_types[2]);
