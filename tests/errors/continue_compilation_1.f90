@@ -847,4 +847,9 @@ program continue_compilation_1
         implicit none
         goto 20  ! {Error} Label 20 is not defined
     end subroutine
+
+    subroutine length_specifier_non_character()
+        implicit none
+        integer :: i*2
+    end subroutine
 end program
