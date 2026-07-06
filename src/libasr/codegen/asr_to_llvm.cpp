@@ -4363,7 +4363,7 @@ public:
                 array_t->m_physical_type == ASR::array_physical_typeType::UnboundedPointerArray ||
                 array_t->m_physical_type == ASR::array_physical_typeType::FixedSizeArray ||
                 array_t->m_physical_type == ASR::array_physical_typeType::SIMDArray ||
-                (array_t->m_physical_type == ASR::array_physical_typeType::StringArraySinglePointer && ASRUtils::is_fixed_size_array(x_mv_type)) ) {
+                array_t->m_physical_type == ASR::array_physical_typeType::StringArraySinglePointer ) {
                 int ptr_loads_copy = ptr_loads;
                 for( size_t idim = 0; idim < x.n_args; idim++ ) {
                     llvm::Value* dim_start = nullptr;
@@ -4458,7 +4458,8 @@ public:
                 }
                 tmp = arr_descr->get_single_element(type, array, indices, x.n_args, ASRUtils::expr_type(x.m_v), x.m_v, location_manager,
                                                     selector_type_decl,
-                                                    array_t->m_physical_type == ASR::array_physical_typeType::PointerArray,
+                                                    array_t->m_physical_type == ASR::array_physical_typeType::PointerArray ||
+                                                    array_t->m_physical_type == ASR::array_physical_typeType::StringArraySinglePointer,
                                                     is_fixed_size, llvm_diminfo.p, is_polymorphic,
                                                     nullptr, false,
                                                     check_for_bounds, array_name, infile);
@@ -12095,8 +12096,14 @@ public:
                         !ASR::is_a<ASR::Allocatable_t>(*mem_type);
                 }
             }
-            if (is_bindc_char_member) {
-                // bind(C) struct character member: store first byte directly as i8
+            bool is_cchar_array_item = false;
+            if (ASR::is_a<ASR::ArrayItem_t>(*x.m_target)) {
+                ASR::ttype_t* target_item_type = ASRUtils::extract_type(ASRUtils::expr_type(x.m_target));
+                is_cchar_array_item = ASR::is_a<ASR::String_t>(*target_item_type) &&
+                    ASR::down_cast<ASR::String_t>(target_item_type)->m_physical_type == ASR::CChar;
+            }
+            if (is_bindc_char_member || is_cchar_array_item) {
+                // bind(C) character storage: store first byte directly as i8
                 ASR::String_t* src_str_type = ASR::down_cast<ASR::String_t>(
                     ASRUtils::extract_type(asr_value_type));
                 llvm::Value* byte_val;
