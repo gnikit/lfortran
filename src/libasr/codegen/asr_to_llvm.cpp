@@ -18836,18 +18836,42 @@ public:
             ASR::ttype_t* unit_type = ASRUtils::expr_type(x.m_unit);
             is_string_array = ASRUtils::is_array(unit_type);
             llvm::Value *src_data, *src_len;
-            std::tie(src_data, src_len) = llvm_utils->get_string_length_data(
-                ASRUtils::get_string_type(x.m_unit), unit_val);
-            args.push_back(src_data);
-            args.push_back(src_len);
             if (is_string_array) {
-                // For character arrays, pass the number of elements
-                ASR::dimension_t* dims = nullptr;
-                size_t n_dims = ASRUtils::extract_dimensions_from_ttype(unit_type, dims);
-                LCOMPILERS_ASSERT(n_dims >= 1);
-                int64_t n_elems_val = ASRUtils::get_fixed_size_of_array(dims, n_dims);
-                args.push_back(llvm::ConstantInt::get(
-                    llvm::Type::getInt64Ty(context), llvm::APInt(64, n_elems_val)));
+                ASR::ttype_t* array_type = ASRUtils::type_get_past_allocatable_pointer(unit_type);
+                if (ASRUtils::extract_physical_type(array_type) == ASR::DescriptorArray) {
+                    llvm::Type* llvm_array_type = llvm_utils->get_type_from_ttype_t_util(
+                        x.m_unit, array_type, module.get());
+                    if (ASRUtils::is_allocatable_or_pointer(unit_type)) {
+                        unit_val = llvm_utils->CreateLoad2(
+                            llvm_array_type->getPointerTo(), unit_val);
+                    }
+                }
+                src_data = llvm_utils->get_stringArray_data(array_type, unit_val);
+                src_len = llvm_utils->get_stringArray_length(array_type, unit_val);
+                args.push_back(src_data);
+                args.push_back(src_len);
+
+                ASR::Array_t* array_t = ASR::down_cast<ASR::Array_t>(array_type);
+                llvm::Value* n_elems;
+                if (array_t->m_physical_type == ASR::array_physical_typeType::DescriptorArray) {
+                    llvm::Type* llvm_array_type = llvm_utils->get_type_from_ttype_t_util(
+                        x.m_unit, array_type, module.get());
+                    n_elems = arr_descr->get_array_size(llvm_array_type, unit_val, nullptr, 4);
+                    n_elems = llvm_utils->convert_kind(n_elems, llvm::Type::getInt64Ty(context));
+                } else {
+                    ASR::dimension_t* dims = nullptr;
+                    size_t n_dims = ASRUtils::extract_dimensions_from_ttype(array_type, dims);
+                    LCOMPILERS_ASSERT(n_dims >= 1);
+                    int64_t n_elems_val = ASRUtils::get_fixed_size_of_array(dims, n_dims);
+                    n_elems = llvm::ConstantInt::get(
+                        llvm::Type::getInt64Ty(context), llvm::APInt(64, n_elems_val));
+                }
+                args.push_back(n_elems);
+            } else {
+                std::tie(src_data, src_len) = llvm_utils->get_string_length_data(
+                    ASRUtils::get_string_type(x.m_unit), unit_val);
+                args.push_back(src_data);
+                args.push_back(src_len);
             }
         } else {
             args.push_back(unit_val);
