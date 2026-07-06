@@ -8968,19 +8968,26 @@ public:
                 current_type = h.m_type;
             }
             if (current_type) {
-                AST::decl_attribute_t *decl_type = current_type;
-                Vec<ASR::dimension_t> dims;
-                dims.reserve(al, 1);
-                ASR::symbol_t *type_declaration;
-                ASR::ttype_t *type = determine_type(x.base.base.loc, var_name, decl_type, false, false,
-                                                    dims, nullptr, type_declaration, ASR::abiType::Source);
-                ASR::symbol_t *var_sym = ASR::down_cast<ASR::symbol_t>(
-                    ASR::make_Variable_t(al, x.base.base.loc, current_scope, s2c(al, var_name),
-                        nullptr, 0, ASR::intentType::Local, nullptr, nullptr, ASR::storage_typeType::Default,
-                        type, nullptr, ASR::abiType::Source, ASR::Public, ASR::presenceType::Required, false,
-                        false, false, nullptr, false, false, ASR::pass_attrType::NotMethod, nullptr, nullptr, 0));
-                current_scope->add_symbol(var_name, var_sym);
-                var = ASRUtils::EXPR(ASR::make_Var_t(al, x.base.base.loc, var_sym));                                    
+                // A type-spec (e.g. `do concurrent (integer :: j = ...)`)
+                // declares the index variable. If a variable of the same name
+                // already exists in the current scope, reuse it instead of
+                // adding a duplicate symbol.
+                ASR::symbol_t *var_sym = current_scope->get_symbol(var_name);
+                if (var_sym == nullptr) {
+                    AST::decl_attribute_t *decl_type = current_type;
+                    Vec<ASR::dimension_t> dims;
+                    dims.reserve(al, 1);
+                    ASR::symbol_t *type_declaration;
+                    ASR::ttype_t *type = determine_type(x.base.base.loc, var_name, decl_type, false, false,
+                                                        dims, nullptr, type_declaration, ASR::abiType::Source);
+                    var_sym = ASR::down_cast<ASR::symbol_t>(
+                        ASR::make_Variable_t(al, x.base.base.loc, current_scope, s2c(al, var_name),
+                            nullptr, 0, ASR::intentType::Local, nullptr, nullptr, ASR::storage_typeType::Default,
+                            type, nullptr, ASR::abiType::Source, ASR::Public, ASR::presenceType::Required, false,
+                            false, false, nullptr, false, false, ASR::pass_attrType::NotMethod, nullptr, nullptr, 0));
+                    current_scope->add_symbol(var_name, var_sym);
+                }
+                var = ASRUtils::EXPR(ASR::make_Var_t(al, x.base.base.loc, var_sym));
             } else {
                 var = ASRUtils::EXPR(resolve_variable(x.base.base.loc, var_name));
             }
