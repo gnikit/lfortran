@@ -12710,6 +12710,39 @@ public:
                 Level::Error, Stage::Semantic, {Label("", {loc})}));
             throw SemanticAbort();
         }
+        if (ASR::is_a<ASR::Struct_t>(*ASRUtils::symbol_get_past_external(v))) {
+            // `dt_name` names a parent type accessed as a component, as in
+            // `obj%parent_type_name%member` where the enclosing derived type
+            // extends `parent_type_name`. Resolve `var_name` as a member of
+            // this derived type, searching its parent types as well.
+            ASR::Struct_t* par_der_type = ASR::down_cast<ASR::Struct_t>(
+                ASRUtils::symbol_get_past_external(v));
+            ASR::symbol_t* member = nullptr;
+            while( par_der_type != nullptr && member == nullptr ) {
+                scope = par_der_type->m_symtab;
+                member = par_der_type->m_symtab->get_symbol(var_name);
+                if( par_der_type->m_parent != nullptr ) {
+                    ASR::symbol_t* parent_sym = ASRUtils::symbol_get_past_external(par_der_type->m_parent);
+                    par_der_type = ASR::down_cast<ASR::Struct_t>(parent_sym);
+                    if (par_der_type->m_name == var_name) {
+                        member = parent_sym;
+                    }
+                } else {
+                    par_der_type = nullptr;
+                }
+            }
+            if( member == nullptr ) {
+                diag.add(Diagnostic("Variable '" + dt_name + "' doesn't have any member named, '" + var_name + "'.",
+                    Level::Error, Stage::Semantic, {Label("", {loc})}));
+                throw SemanticAbort();
+            }
+            ASR::asr_t* v_var = ASR::make_Var_t(al, loc, v);
+            ASR::asr_t* expr_ = (ASR::asr_t*) ASRUtils::getStructInstanceMember_t(
+                al, loc, v_var, nullptr, member, current_scope);
+            make_ArrayItem_from_struct_m_args(
+                member_struct_m_args, member_struct_n_args, ASRUtils::EXPR(expr_), expr_, loc);
+            return expr_;
+        }
         ASR::Variable_t* v_variable = ASR::down_cast<ASR::Variable_t>(ASRUtils::symbol_get_past_external(v));
         ASR::ttype_t* v_variable_m_type = ASRUtils::duplicate_type(al, ASRUtils::extract_type(v_variable->m_type));
 
