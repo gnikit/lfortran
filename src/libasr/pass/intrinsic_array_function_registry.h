@@ -3036,6 +3036,10 @@ namespace Eoshift {
             append_error(diag, "'boundary' argument of 'eoshift' intrinsic must be a scalar of same type as array type", boundary->base.loc);
             return nullptr;
         }
+        if (!is_boundary_present && ASR::is_a<ASR::StructType_t>(*ASRUtils::extract_type(type_array))) {
+            append_error(diag, "Missing 'boundary' argument to 'eoshift' intrinsic", array->base.loc);
+            return nullptr;
+        }
         ASR::dimension_t* array_dims = nullptr;
         int array_rank = extract_dimensions_from_ttype(type_array, array_dims);
         int array_dim = -1;
