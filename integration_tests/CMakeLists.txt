@@ -3492,6 +3492,7 @@ RUN(NAME nested_vars_05 LABELS gfortran llvm)
 RUN(NAME nested_vars_06 LABELS gfortran llvm EXTRA_ARGS --implicit-typing --implicit-interface)
 RUN(NAME nested_vars_07 LABELS gfortran llvm)
 RUN(NAME nested_vars_08 LABELS gfortran llvm)
+RUN(NAME nested_vars_11 LABELS gfortran llvm)
 
 RUN(NAME nested_vars_10 LABELS gfortran llvm)
 
