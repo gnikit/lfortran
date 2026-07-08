@@ -5099,7 +5099,7 @@ public:
     }
 
     ASR::expr_t* adjust_array_character_length(ASR::expr_t* value, int64_t lhs_len, int64_t rhs_len, Allocator& al) {
-        ASR::ArrayConstant_t* array_constant = ASR::down_cast<ASR::ArrayConstant_t>(value);
+        ASR::ArrayConstant_t* array_constant = ASR::down_cast<ASR::ArrayConstant_t>(ASRUtils::expr_value(value));
         Vec<ASR::expr_t*> body;
         size_t array_size = ASRUtils::get_fixed_size_of_array(array_constant->m_type);
 
@@ -5126,7 +5126,7 @@ public:
                 body.p, body.size(), ASRUtils::extract_type(array_constant->m_type));
         array_constant->m_n_data = array_size * lhs_len;
 
-        return (ASR::expr_t*) array_constant;
+        return value;
     }
 
     ASR::expr_t* evaluate_parameter_array_section(
