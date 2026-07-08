@@ -193,6 +193,7 @@ class ImpliedDoLoopValuesVisitor : public ASR::BaseWalkVisitor<ImpliedDoLoopValu
         {ASRUtils::IntrinsicElementalFunctions::SelectedRealKind, 3},
         {ASRUtils::IntrinsicElementalFunctions::Ishftc, 3},
         {ASRUtils::IntrinsicElementalFunctions::Ichar, 2},
+        {ASRUtils::IntrinsicElementalFunctions::Iachar, 2},
         {ASRUtils::IntrinsicElementalFunctions::Char, 2},
         {ASRUtils::IntrinsicElementalFunctions::Achar, 2},
         {ASRUtils::IntrinsicElementalFunctions::Logical, 2},
