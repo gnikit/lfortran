@@ -2333,15 +2333,9 @@ public:
                     ASRUtils::type_get_past_pointer(ASRUtils::type_get_past_allocatable(
                         ASRUtils::expr_type(tmp_expr))), module.get());
                 llvm::Value* ptr_val = x_arr;
-#if LLVM_VERSION_MAJOR >= 17
-                llvm::Type* i8_ptr_ty
-                    = llvm::PointerType::getUnqual(llvm::Type::getInt8Ty(context));
-#else
-                llvm::Type* i8_ptr_ty = llvm::Type::getInt8PtrTy(context);
-#endif
 
                 if (x_arr && x_arr->getType() == nullptr) {
-                    ptr_val = llvm::ConstantPointerNull::get(static_cast<llvm::PointerType*>(i8_ptr_ty));
+                    ptr_val = llvm::ConstantPointerNull::get(character_type);
                 }
                 llvm::Value* is_allocated = nullptr;
                 std::string var_name = "";
@@ -12163,14 +12157,8 @@ public:
                     src_data, llvm::MaybeAlign(), copy_len);
                 // pad remaining bytes (dst_len - copy_len) with ' '
                 llvm::Value* pad_len = builder->CreateSub(dst_len_val, copy_len);
-#if LLVM_VERSION_MAJOR >= 17
-                llvm::Type* i8_ptr_ty_pad
-                    = llvm::PointerType::getUnqual(llvm::Type::getInt8Ty(context));
-#else
-                llvm::Type* i8_ptr_ty_pad = llvm::Type::getInt8PtrTy(context);
-#endif
                 llvm::Value* target_i8 = builder->CreateBitCast(
-                    target, i8_ptr_ty_pad);
+                    target, character_type);
                 llvm::Value* pad_dst = builder->CreateGEP(
                     llvm::Type::getInt8Ty(context), target_i8, copy_len);
                 builder->CreateMemSet(pad_dst,
