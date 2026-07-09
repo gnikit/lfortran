@@ -7236,11 +7236,17 @@ static inline ASR::symbol_t* import_struct_sym_as_external(Allocator& al,
     const Location& loc, ASR::expr_t* v_expr, SymbolTable* current_scope) {
     ASR::symbol_t* struct_sym = get_struct_sym_from_struct_expr(v_expr);
     if (struct_sym == nullptr) return nullptr;
-    std::string struct_name = symbol_name(struct_sym);
+    // ExternalSymbol.m_external must point at the original definition (e.g.
+    // Struct), never another ExternalSymbol. Expressions like s%component can
+    // yield a use-associated ExternalSymbol when the component type is only
+    // reached transitively (not imported into the current scope).
+    ASR::symbol_t* original_struct = symbol_get_past_external(struct_sym);
+    if (original_struct == nullptr) return nullptr;
+    std::string struct_name = symbol_name(original_struct);
     if (current_scope->resolve_symbol(struct_name) == nullptr) {
         struct_sym = ASR::down_cast<ASR::symbol_t>(ASR::make_ExternalSymbol_t(
-            al, loc, current_scope, s2c(al, struct_name), struct_sym,
-            ASRUtils::symbol_name(ASRUtils::get_asr_owner(struct_sym)), nullptr, 0,
+            al, loc, current_scope, s2c(al, struct_name), original_struct,
+            ASRUtils::symbol_name(ASRUtils::get_asr_owner(original_struct)), nullptr, 0,
             s2c(al, struct_name), ASR::accessType::Public));
         current_scope->add_symbol(struct_name, struct_sym);
     } else {
@@ -7251,8 +7257,8 @@ static inline ASR::symbol_t* import_struct_sym_as_external(Allocator& al,
         } else {
             std::string unique_name = current_scope->get_unique_name(struct_name);
             struct_sym = ASR::down_cast<ASR::symbol_t>(ASR::make_ExternalSymbol_t(
-                al, loc, current_scope, s2c(al, unique_name), struct_sym,
-                ASRUtils::symbol_name(ASRUtils::get_asr_owner(struct_sym)), nullptr, 0,
+                al, loc, current_scope, s2c(al, unique_name), original_struct,
+                ASRUtils::symbol_name(ASRUtils::get_asr_owner(original_struct)), nullptr, 0,
                 s2c(al, struct_name), ASR::accessType::Public));
             current_scope->add_symbol(unique_name, struct_sym);
         }
