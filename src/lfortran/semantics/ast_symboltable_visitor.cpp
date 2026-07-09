@@ -2947,11 +2947,8 @@ public:
                         "other than 1 is not standard-conforming "
                         "(LFortran extension)",
                         {mem->base.base.loc},
-                        "Fortran requires CHARACTER components of "
-                        "interoperable types to have length 1; other "
-                        "compilers (e.g. GFortran) may reject this. "
-                        "LFortran lays the component out as a contiguous "
-                        "inline character array matching Flang/ifx."
+                        "use character(len=1) or a character array of length-1 "
+                        "elements to make the type standard-conforming"
                     );
                 }
             }

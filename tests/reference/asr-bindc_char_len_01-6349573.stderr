@@ -2,4 +2,4 @@ warning: character component of a BIND(C) type with length other than 1 is not s
  --> tests/warnings/bindc_char_len_01.f90:7:38
   |
 7 |     character(kind=c_char, len=5) :: s
-  |                                      ^ Fortran requires CHARACTER components of interoperable types to have length 1; other compilers (e.g. GFortran) may reject this. LFortran lays the component out as a contiguous inline character array matching Flang/ifx.
+  |                                      ^ use character(len=1) or a character array of length-1 elements to make the type standard-conforming
