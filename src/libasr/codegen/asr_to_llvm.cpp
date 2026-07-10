@@ -949,11 +949,12 @@ public:
             ASRUtils::extract_type(expr_type(str_expr)));
         this->visit_expr_load_wrapper(str_expr, 0);
 
-        // For bind(C) struct character members, the LLVM type is i8*
-        // even though the ASR physical type says DescriptorString.
+        // For bind(C)/SEQUENCE struct character members, the LLVM type is
+        // [len x i8]* even though the ASR physical type says DescriptorString.
         ASR::string_physical_typeType phys_type = str->m_physical_type;
+        int64_t bindc_inline_len = 0;
         if (phys_type == ASR::DescriptorString && tmp->getType()->isPointerTy()) {
-            // Check if this is a non-pointer character member of a bind(C) struct
+            // Check if this is a non-pointer character member of a bind(C)/SEQUENCE struct
             if (ASR::is_a<ASR::StructInstanceMember_t>(*str_expr)) {
                 ASR::StructInstanceMember_t* sim =
                     ASR::down_cast<ASR::StructInstanceMember_t>(str_expr);
@@ -963,17 +964,31 @@ public:
                     member_var->m_parent_symtab->asr_owner);
                 struct_sym = ASRUtils::symbol_get_past_external(struct_sym);
                 if (ASR::is_a<ASR::Struct_t>(*struct_sym) &&
-                    ASR::down_cast<ASR::Struct_t>(struct_sym)->m_abi == ASR::abiType::BindC) {
+                    (ASR::down_cast<ASR::Struct_t>(struct_sym)->m_abi == ASR::abiType::BindC ||
+                     ASR::down_cast<ASR::Struct_t>(struct_sym)->m_is_sequence)) {
                     ASR::ttype_t* mem_type = sim->m_type;
                     if (!ASR::is_a<ASR::Pointer_t>(*mem_type) &&
                         !ASR::is_a<ASR::Allocatable_t>(*mem_type)) {
                         phys_type = ASR::CChar;
+                        bindc_inline_len = 1;
+                        if (str->m_len) {
+                            ASRUtils::extract_value(str->m_len, bindc_inline_len);
+                        }
+                        if (bindc_inline_len < 1) bindc_inline_len = 1;
                     }
                 }
             }
         }
 
         std::pair<llvm::Value*, llvm::Value*> data_and_length;
+        if (bindc_inline_len > 0) {
+            // tmp is a pointer to inline [len x i8]; bitcast to i8* (first byte).
+            data_and_length.first = builder->CreateBitCast(
+                tmp, character_type);
+            data_and_length.second = llvm::ConstantInt::get(
+                context, llvm::APInt(64, bindc_inline_len));
+            return data_and_length;
+        }
         switch (phys_type)
         {
             case ASR::DescriptorString:{
@@ -6763,8 +6778,10 @@ public:
                     allocate_array_members_of_struct(struct_sym, ptr_member, symbol_type,
                         is_intent_out, initialize_val, skip_allocatable_array_descriptor_init);
                 }  else if(ASRUtils::is_string_only(symbol_type) && !is_intent_out) {
-                    // Skip string descriptor setup for bind(C) struct non-pointer character members
-                    bool is_bindc = (struct_type_t->m_abi == ASR::abiType::BindC);
+                    // Skip string descriptor setup for bind(C)/SEQUENCE struct
+                    // non-pointer character members (inline [len x i8]).
+                    bool is_bindc = (struct_type_t->m_abi == ASR::abiType::BindC) ||
+                                    struct_type_t->m_is_sequence;
                     ASR::Variable_t* v_sym = ASR::down_cast<ASR::Variable_t>(sym);
                     bool is_direct_char = is_bindc &&
                         !ASR::is_a<ASR::Pointer_t>(*v_sym->m_type) &&
@@ -12080,7 +12097,7 @@ public:
         }
         if ( ASRUtils::is_string_only(ASRUtils::expr_type(x.m_value)) &&
              ASR::is_a<ASR::String_t>(*ASRUtils::extract_type(asr_target_type))) {
-            // Check if target is a character member of a bind(C) struct
+            // Check if target is a character member of a bind(C)/SEQUENCE struct
             bool is_bindc_char_member = false;
             if (ASR::is_a<ASR::StructInstanceMember_t>(*x.m_target)) {
                 ASR::StructInstanceMember_t* sim = ASR::down_cast<ASR::StructInstanceMember_t>(x.m_target);
@@ -12090,7 +12107,8 @@ public:
                     member_var->m_parent_symtab->asr_owner);
                 struct_sym = ASRUtils::symbol_get_past_external(struct_sym);
                 if (ASR::is_a<ASR::Struct_t>(*struct_sym) &&
-                    ASR::down_cast<ASR::Struct_t>(struct_sym)->m_abi == ASR::abiType::BindC) {
+                    (ASR::down_cast<ASR::Struct_t>(struct_sym)->m_abi == ASR::abiType::BindC ||
+                     ASR::down_cast<ASR::Struct_t>(struct_sym)->m_is_sequence)) {
                     ASR::ttype_t* mem_type = sim->m_type;
                     is_bindc_char_member = !ASR::is_a<ASR::Pointer_t>(*mem_type) &&
                         !ASR::is_a<ASR::Allocatable_t>(*mem_type);
@@ -12102,8 +12120,67 @@ public:
                 is_cchar_array_item = ASR::is_a<ASR::String_t>(*target_item_type) &&
                     ASR::down_cast<ASR::String_t>(target_item_type)->m_physical_type == ASR::CChar;
             }
-            if (is_bindc_char_member || is_cchar_array_item) {
-                // bind(C) character storage: store first byte directly as i8
+            if (is_bindc_char_member) {
+                // bind(C)/SEQUENCE character member: layout is inline [dst_len x i8].
+                // memcpy min(src_len, dst_len) bytes, then space-pad the rest.
+                ASR::String_t* dst_str_type = ASR::down_cast<ASR::String_t>(
+                    ASRUtils::extract_type(asr_target_type));
+                int64_t dst_len = 1;
+                if (dst_str_type->m_len) {
+                    ASRUtils::extract_value(dst_str_type->m_len, dst_len);
+                }
+                if (dst_len < 1) dst_len = 1;
+                ASR::String_t* src_str_type = ASR::down_cast<ASR::String_t>(
+                    ASRUtils::extract_type(asr_value_type));
+                llvm::Value* src_data;
+                llvm::Value* src_len_val;
+                if (src_str_type->m_physical_type == ASR::CChar) {
+                    src_data = value;
+                    src_len_val = llvm::ConstantInt::get(
+                        context, llvm::APInt(64, 1));
+                } else {
+                    // DescriptorString
+                    src_data = llvm_utils->CreateLoad2(character_type,
+                        llvm_utils->create_gep2(llvm_utils->string_descriptor, value, 0));
+                    if (src_str_type->m_len &&
+                        ASR::is_a<ASR::IntegerConstant_t>(*src_str_type->m_len)) {
+                        int64_t l = ASR::down_cast<ASR::IntegerConstant_t>(
+                            src_str_type->m_len)->m_n;
+                        src_len_val = llvm::ConstantInt::get(
+                            context, llvm::APInt(64, l));
+                    } else {
+                        src_len_val = llvm_utils->CreateLoad2(
+                            llvm::Type::getInt64Ty(context),
+                            llvm_utils->create_gep2(llvm_utils->string_descriptor, value, 1));
+                    }
+                }
+                llvm::Value* dst_len_val = llvm::ConstantInt::get(
+                    context, llvm::APInt(64, dst_len));
+                // copy_len = min(src_len, dst_len)
+                llvm::Value* cmp = builder->CreateICmpULT(src_len_val, dst_len_val);
+                llvm::Value* copy_len = builder->CreateSelect(cmp, src_len_val, dst_len_val);
+                builder->CreateMemCpy(target, llvm::MaybeAlign(),
+                    src_data, llvm::MaybeAlign(), copy_len);
+                // pad remaining bytes (dst_len - copy_len) with ' '
+                llvm::Value* pad_len = builder->CreateSub(dst_len_val, copy_len);
+#if LLVM_VERSION_MAJOR >= 17
+                llvm::Type* i8_ptr_ty_pad
+                    = llvm::PointerType::getUnqual(llvm::Type::getInt8Ty(context));
+#else
+                llvm::Type* i8_ptr_ty_pad = llvm::Type::getInt8PtrTy(context);
+#endif
+                llvm::Value* target_i8 = builder->CreateBitCast(
+                    target, i8_ptr_ty_pad);
+                llvm::Value* pad_dst = builder->CreateGEP(
+                    llvm::Type::getInt8Ty(context), target_i8, copy_len);
+                builder->CreateMemSet(pad_dst,
+                    llvm::ConstantInt::get(context, llvm::APInt(8, ' ')),
+                    pad_len, llvm::MaybeAlign());
+                tmp = nullptr;
+                return;
+            }
+            if (is_cchar_array_item) {
+                // CChar array item: store first byte directly as i8
                 ASR::String_t* src_str_type = ASR::down_cast<ASR::String_t>(
                     ASRUtils::extract_type(asr_value_type));
                 llvm::Value* byte_val;
@@ -12761,7 +12838,7 @@ public:
         dt_sym = ASRUtils::symbol_get_past_external(dt_sym);
         if (!ASR::is_a<ASR::Struct_t>(*dt_sym)) return false;
         ASR::Struct_t* dt = ASR::down_cast<ASR::Struct_t>(dt_sym);
-        if (dt->m_abi == ASR::abiType::BindC) return false;
+        if (dt->m_abi == ASR::abiType::BindC || dt->m_is_sequence) return false;
 
         llvm::DataLayout data_layout(module->getDataLayout());
         llvm::StructType* st = llvm::cast<llvm::StructType>(elem_llvm_type);
@@ -26922,6 +26999,46 @@ public:
                     llvm::Value* tmp_ptr = builder->CreateAlloca(tmp->getType());
                     builder->CreateStore(tmp, tmp_ptr);
                     tmp = tmp_ptr;
+                }
+                // bind(C)/SEQUENCE inline char member: tmp is [len x i8]* but
+                // format expects string_descriptor*. Materialize a temp descriptor.
+                if (ASRUtils::is_character(*expr_type(x.m_args[i])) &&
+                    ASRUtils::get_string_type(expr_type(x.m_args[i]))->m_physical_type
+                        == ASR::DescriptorString &&
+                    ASR::is_a<ASR::StructInstanceMember_t>(*x.m_args[i])) {
+                    ASR::StructInstanceMember_t* sim = ASR::down_cast<
+                        ASR::StructInstanceMember_t>(x.m_args[i]);
+                    ASR::symbol_t* member_sym = ASRUtils::symbol_get_past_external(sim->m_m);
+                    ASR::Variable_t* member_var = ASR::down_cast<ASR::Variable_t>(member_sym);
+                    ASR::symbol_t* struct_sym = ASR::down_cast<ASR::symbol_t>(
+                        member_var->m_parent_symtab->asr_owner);
+                    struct_sym = ASRUtils::symbol_get_past_external(struct_sym);
+                    if (ASR::is_a<ASR::Struct_t>(*struct_sym) &&
+                        (ASR::down_cast<ASR::Struct_t>(struct_sym)->m_abi
+                            == ASR::abiType::BindC ||
+                         ASR::down_cast<ASR::Struct_t>(struct_sym)->m_is_sequence) &&
+                        !ASR::is_a<ASR::Pointer_t>(*sim->m_type) &&
+                        !ASR::is_a<ASR::Allocatable_t>(*sim->m_type)) {
+                        ASR::String_t* str_ty = ASR::down_cast<ASR::String_t>(
+                            ASRUtils::extract_type(sim->m_type));
+                        int64_t slen = 1;
+                        if (str_ty->m_len) {
+                            ASRUtils::extract_value(str_ty->m_len, slen);
+                        }
+                        if (slen < 1) slen = 1;
+                        llvm::Value* desc = builder->CreateAlloca(
+                            llvm_utils->string_descriptor);
+                        llvm::Value* data_field = llvm_utils->create_gep2(
+                            llvm_utils->string_descriptor, desc, 0);
+                        llvm::Value* len_field = llvm_utils->create_gep2(
+                            llvm_utils->string_descriptor, desc, 1);
+                        llvm::Value* data_ptr = builder->CreateBitCast(
+                            tmp, llvm::Type::getInt8Ty(context)->getPointerTo());
+                        builder->CreateStore(data_ptr, data_field);
+                        builder->CreateStore(llvm::ConstantInt::get(
+                            context, llvm::APInt(64, slen)), len_field);
+                        tmp = desc;
+                    }
                 }
                 args.push_back(tmp);
                 ptr_loads = ptr_load_copy;
