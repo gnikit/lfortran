@@ -10617,6 +10617,22 @@ llvm::Value* LLVMUtils::handle_global_nonallocatable_stringArray(
                     llvm::Type *mem_type = llvm_utils->get_type_from_ttype_t_util(ASRUtils::get_expr_from_sym(al, mem_sym),
                         ASRUtils::symbol_type(mem_sym), module);
                     ASR::ttype_t* member_type = ASRUtils::symbol_type(mem_sym);
+                    bool is_inline_char = (struct_sym->m_abi == ASR::abiType::BindC ||
+                            struct_sym->m_is_sequence) &&
+                        !ASR::is_a<ASR::Pointer_t>(*member_type) &&
+                        !ASR::is_a<ASR::Allocatable_t>(*member_type) &&
+                        ASR::is_a<ASR::String_t>(*ASRUtils::type_get_past_array(member_type));
+                    if (is_inline_char) {
+                        llvm::Type* inline_type = llvm_utils->name2dertype[
+                            der_type_name]->getElementType(mem_idx);
+                        if (src_member->getType()->isPointerTy()) {
+                            src_member = llvm_utils->CreateLoad2(inline_type, src_member);
+                        }
+                        llvm::Value* dest_member = llvm_utils->create_gep2(
+                            llvm_utils->name2dertype[der_type_name], dest, mem_idx);
+                        builder->CreateStore(src_member, dest_member);
+                        continue;
+                    }
                     if( !LLVM::is_llvm_struct(member_type) &&
                         !ASRUtils::is_array(member_type) &&
                         !ASRUtils::is_pointer(member_type) &&

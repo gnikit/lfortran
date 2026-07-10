@@ -46,6 +46,7 @@ program derived_types_150
 
   bytes_to_copy = int(ss1 / 8, kind=c_size_t)
   call memcpy(c_loc(obj2), c_loc(obj1), bytes_to_copy)
+  call consume(obj2)
 
   if (obj2%i /= 42) error stop
   if (.not. obj2%fallacy) error stop
@@ -54,4 +55,11 @@ program derived_types_150
   if (abs(aimag(obj2%issues) - 4.0) > 1.0e-6) error stop
 
   print *, "ok", ss1
+
+contains
+
+  subroutine consume(value)
+    class(*), intent(inout) :: value(..)
+  end subroutine consume
+
 end program derived_types_150

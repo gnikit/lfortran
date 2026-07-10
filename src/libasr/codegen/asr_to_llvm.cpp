@@ -12838,7 +12838,7 @@ public:
         dt_sym = ASRUtils::symbol_get_past_external(dt_sym);
         if (!ASR::is_a<ASR::Struct_t>(*dt_sym)) return false;
         ASR::Struct_t* dt = ASR::down_cast<ASR::Struct_t>(dt_sym);
-        if (dt->m_abi == ASR::abiType::BindC) return false;
+        if (dt->m_abi == ASR::abiType::BindC || dt->m_is_sequence) return false;
 
         llvm::DataLayout data_layout(module->getDataLayout());
         llvm::StructType* st = llvm::cast<llvm::StructType>(elem_llvm_type);
