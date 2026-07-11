@@ -3042,6 +3042,14 @@ public:
         Vec<ASR::stmt_t*> body;
         body.reserve(al, x.n_body);
         for( size_t i = 0; i < x.n_syms; i++ ) {
+            if (AST::is_a<AST::BOZ_t>(*x.m_syms[i].m_initializer)) {
+                diag.add(Diagnostic(
+                    "Association target cannot be a BOZ literal constant",
+                    Level::Error, Stage::Semantic, {
+                        Label("", {x.m_syms[i].m_initializer->base.loc})
+                    }));
+                throw SemanticAbort();
+            }
             this->visit_expr(*x.m_syms[i].m_initializer);
             ASR::expr_t* tmp_expr = ASRUtils::EXPR(tmp);
             ASR::ttype_t* tmp_type = ASRUtils::expr_type(tmp_expr);

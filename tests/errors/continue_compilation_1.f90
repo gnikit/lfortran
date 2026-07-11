@@ -881,4 +881,8 @@ program continue_compilation_1
         integer :: items(:)
         consume_assumed_shape_function = size(items)
     end function
+    subroutine associate_boz_target()
+        associate (y => z'1') 
+        end associate
+    end subroutine
 end program
