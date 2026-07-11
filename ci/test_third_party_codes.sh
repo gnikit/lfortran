@@ -289,9 +289,9 @@ time_section "🧪 Testing Julienne" '
   cd julienne
   micromamba install -c conda-forge fpm
 
-  # Release 3.6.2
-  git checkout 3.6.2
-  assert_git_commit b29fe49efc4547b88cde59e19462956df9c3050a
+  # Release 4.1.0
+  git checkout 4.1.0
+  assert_git_commit 632dbbe876fc2567f27a2c906429a3b596b6fd63
   fpm test --compiler=lfortran --flag --cpp --flag --separate-compilation --flag --realloc-lhs-arrays
 
   print_success "Done with Julienne"
