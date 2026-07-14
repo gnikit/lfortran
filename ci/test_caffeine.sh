@@ -199,7 +199,8 @@ if [ "$skip_opencoarrays" = true ]; then
     echo "Skipping OpenCoarrays cross-check for $testfile"
 else
     caf "$testfile" -o "${base}_gf.out"
-    cafrun -np "$num_images" ./"${base}_gf.out"
+    cafrun -np "$num_images" ./"${base}_gf.out" 2>&1 \
+      | sed '/Error: OSC UCX component priority/{N;/\n[[:space:]]*$/d}' # filter persistent non-fatal errors
     rm -f "${base}_gf.out"
 fi
 
