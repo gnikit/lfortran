@@ -3,6 +3,9 @@ echo "##[group] Setup"
 set -ex
 
 echo "CONDA_PREFIX=$CONDA_PREFIX"
+if [[ $(uname -s) == Linux ]] ; then
+  LINUX=1
+fi
 
 # Use freshly built LFortran
 
@@ -16,8 +19,16 @@ micromamba install -c conda-forge fpm=0.12.0
 which fpm
 fpm --version
 
+if [ $LINUX ] ; then
+
+(set +x
+ echo "##[endgroup]"
+ echo "##[group] Install OpenMPI"
+)
+
 micromamba install -y -c conda-forge openmpi
 export PRTE_MCA_rmaps_default_mapping_policy=:oversubscribe
+export OMPI_MCA_rmaps_base_oversubscribe=1
 
 (set +x 
  echo "##[endgroup]"
@@ -35,10 +46,15 @@ cmake --install build
 
 export PATH="$HOME/opencoarrays/bin:$PATH"
 
+cd ..
+
 which caf
 caf --version
 
-cd ..
+which cafrun
+cafrun --version
+
+fi # LINUX
 
 (set +x 
  echo "##[endgroup]"
@@ -65,11 +81,8 @@ echo "CXX=${CXX}"
 which clang
 clang --version
 
-which caf
-caf --version
-
-which cafrun
-cafrun --version
+# inject ISO_Fortran_binding.h into the C include path
+export CPPFLAGS="-I$(lfortran --print-c-include-dir)"
 
 # GASNet debug options
 
@@ -171,25 +184,28 @@ gasnetrun_smp -n "$num_images" ./"${base}_lf.out"
 # Cross-check with gfortran/OpenCoarrays, unless OpenCoarrays lacks support
 # ----------------------------------------
 
-skip_opencoarrays=false
-for skip in $opencoarrays_unsupported; do
-    if [ "$base" = "$skip" ]; then
-        skip_opencoarrays=true
-    fi
-done
+if [ $LINUX ] ; then
+  skip_opencoarrays=false
+  for skip in $opencoarrays_unsupported; do
+      if [ "$base" = "$skip" ]; then
+          skip_opencoarrays=true
+      fi
+  done
+else # macOS
+  skip_opencoarrays=true
+fi
 
 if [ "$skip_opencoarrays" = true ]; then
-    echo "Skipping OpenCoarrays cross-check for $testfile (character co_max/co_min not supported by OpenCoarrays)"
+    echo "Skipping OpenCoarrays cross-check for $testfile"
 else
     caf "$testfile" -o "${base}_gf.out"
     cafrun -np "$num_images" ./"${base}_gf.out"
     rm -f "${base}_gf.out"
 fi
 
-echo "PASS: $testfile"
-
 rm -f "${base}_lf.out"
 
+echo "PASS: $testfile"
 
 done
 
