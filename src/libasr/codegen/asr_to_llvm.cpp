@@ -17922,8 +17922,28 @@ public:
                 builder->CreateStore(
                     llvm::ConstantInt::get(llvm::Type::getInt64Ty(context), 0),
                     str_offset);
-                std::tie(str_src_data, str_src_len) = llvm_utils->get_string_length_data(
-                    ASRUtils::get_string_type(x.m_unit), unit_val);
+                ASR::ttype_t* unit_type = ASRUtils::expr_type(x.m_unit);
+                if (ASRUtils::is_array(unit_type)) {
+                    ASR::ttype_t* array_type = ASRUtils::type_get_past_allocatable_pointer(unit_type);
+                    if (ASRUtils::is_allocatable_or_pointer(unit_type)) {
+                        llvm::Type* llvm_array_type = llvm_utils->get_type_from_ttype_t_util(
+                            x.m_unit, array_type, module.get());
+                        unit_val = llvm_utils->CreateLoad2(llvm_array_type->getPointerTo(), unit_val);
+                    }
+                    str_src_data = llvm_utils->get_stringArray_data(array_type, unit_val);
+                    llvm::Value* elem_len = llvm_utils->get_stringArray_length(array_type, unit_val);
+                    ASR::ttype_t* type32 = ASRUtils::TYPE(ASR::make_Integer_t(al, x.base.base.loc, 4));
+                    ASR::ArraySize_t* array_size = ASR::down_cast2<ASR::ArraySize_t>(
+                        ASR::make_ArraySize_t(al, x.base.base.loc, x.m_unit,
+                            nullptr, type32, nullptr));
+                    visit_ArraySize(*array_size);
+                    llvm::Value* n_elems = builder->CreateIntCast(tmp, llvm::Type::getInt64Ty(context), true);
+                    tmp = nullptr;
+                    str_src_len = builder->CreateMul(elem_len, n_elems);
+                } else {
+                    std::tie(str_src_data, str_src_len) = llvm_utils->get_string_length_data(
+                        ASRUtils::get_string_type(x.m_unit), unit_val);
+                }
             }
             for (size_t i=0; i<x.n_values; i++) {
                 // Handle ImpliedDoLoop: read(10,*) (vals(j), j=1,n)
