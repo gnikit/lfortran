@@ -8867,8 +8867,19 @@ public:
             ASR::ttype_t* asr_shape_type = nullptr;
             if( shape ) {
                 asr_shape_type = ASRUtils::get_contained_type(ASRUtils::expr_type(shape));
+                int ptr_loads_copy_shape = ptr_loads;
+                if( ASRUtils::extract_physical_type(asr_shape_type) ==
+                    ASR::array_physical_typeType::DescriptorArray ||
+                    ASRUtils::extract_physical_type(asr_shape_type) ==
+                    ASR::array_physical_typeType::PointerArray ) {
+                    if( ASR::is_a<ASR::Allocatable_t>(*ASRUtils::expr_type(shape)) ||
+                        ASR::is_a<ASR::Pointer_t>(*ASRUtils::expr_type(shape)) ) {
+                        ptr_loads = 1;
+                    }
+                }
                 this->visit_expr(*shape);
                 llvm_shape = tmp;
+                ptr_loads = ptr_loads_copy_shape;
             }
             ASR::ttype_t* fptr_type = ASRUtils::expr_type(fptr);
             llvm::Type* llvm_fptr_type = llvm_utils->get_type_from_ttype_t_util(fptr,
@@ -8896,11 +8907,14 @@ public:
             llvm::Value* shape_data = llvm_shape;
             if( llvm_shape && (ASRUtils::extract_physical_type(asr_shape_type) ==
                 ASR::array_physical_typeType::DescriptorArray) ) {
-                ASR::ttype_t* shape_elem_asr_type = ASRUtils::type_get_past_pointer(ASRUtils::expr_type(shape));
-                llvm::Type* shape_elem_llvm_type = llvm_utils->get_type_from_ttype_t_util( nullptr, shape_elem_asr_type, module.get());
-                llvm::Type* shape_llvm_type = llvm_utils->get_type_from_ttype_t_util(
-                    nullptr, ASRUtils::expr_type(shape), module.get());
-                shape_data = llvm_utils->CreateLoad2(shape_elem_llvm_type, arr_descr->get_pointer_to_data(shape_llvm_type, llvm_shape));
+                ASR::ttype_t* shape_asr_type = ASRUtils::expr_type(shape);
+                ASR::ttype_t* shape_contained_type = ASRUtils::type_get_past_allocatable_pointer(shape_asr_type);
+                llvm::Type* shape_scalar_type = llvm_utils->get_type_from_ttype_t_util(
+                    nullptr, ASRUtils::extract_type(shape_asr_type), module.get());
+                llvm::Type* shape_desc_llvm_type = llvm_utils->get_type_from_ttype_t_util(
+                    nullptr, shape_contained_type, module.get());
+                shape_data = llvm_utils->CreateLoad2(shape_scalar_type->getPointerTo(),
+                    arr_descr->get_pointer_to_data(shape_desc_llvm_type, llvm_shape));
             }
             if( llvm_shape && (ASRUtils::extract_physical_type(asr_shape_type) ==
                 ASR::array_physical_typeType::FixedSizeArray) ) {
