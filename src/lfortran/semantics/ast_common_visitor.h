@@ -16998,8 +16998,8 @@ public:
                     }
                     ASR::ttype_t* iface_type = create_or_update_implicit_interface(
                         proc_var, x.base.base.loc, arg_types.p, arg_types.size(),
-                        return_type, parent_scope, var_name, nullptr,
-                        arg_type_decls.p);
+                        return_type, parent_scope, var_name,
+                        arg_type_decls);
                     // Update the arg type in the containing function's signature
                     if (current_scope->asr_owner &&
                             ASR::is_a<ASR::symbol_t>(*current_scope->asr_owner) &&
@@ -17120,8 +17120,8 @@ public:
                     }
                     create_or_update_implicit_interface(
                         proc_var, x.base.base.loc, arg_types.p, arg_types.size(),
-                        return_type, parent_scope, var_name, nullptr,
-                        arg_type_decls.p);
+                        return_type, parent_scope, var_name,
+                        arg_type_decls);
                     // Update the arg type in the containing function's signature
                     ASR::ttype_t* updated_type = proc_var->m_type;
                     if (current_scope->asr_owner &&
@@ -17179,8 +17179,8 @@ public:
                 }
                 ASR::ttype_t* iface_type = create_or_update_implicit_interface(
                     dummy_var, x.base.base.loc, arg_types.p, arg_types.size(),
-                    return_type, owner_scope, var_name, nullptr,
-                    arg_type_decls.p);
+                    return_type, owner_scope, var_name,
+                    arg_type_decls);
 
                 if (owner_scope->asr_owner &&
                     ASR::is_a<ASR::symbol_t>(*owner_scope->asr_owner) &&
@@ -19627,8 +19627,9 @@ public:
             ASR::ttype_t** arg_type_arr, size_t n_arg_types,
             ASR::ttype_t* return_type, SymbolTable* parent_scope,
             const std::string& var_name,
-            SymbolTable* owner_scope = nullptr,
-            ASR::symbol_t** arg_type_decls = nullptr) {
+            Vec<ASR::symbol_t*>& arg_type_decls,
+            SymbolTable* owner_scope = nullptr) {
+        LCOMPILERS_ASSERT(arg_type_decls.size() == n_arg_types)
         bool update_existing = proc_var->m_type_declaration != nullptr &&
             ASR::is_a<ASR::Function_t>(*ASRUtils::symbol_get_past_external(
                 proc_var->m_type_declaration));
@@ -19652,7 +19653,7 @@ public:
         for (size_t i = 0; i < n_arg_types; i++) {
             std::string arg_name = iface_name + "_arg_" + std::to_string(i);
             // Use the type_declaration passed by the caller (nullptr when not available)
-            ASR::symbol_t* arg_type_decl = (arg_type_decls ? arg_type_decls[i] : nullptr);
+            ASR::symbol_t* arg_type_decl = arg_type_decls[i];
             ASR::symbol_t* arg_sym = ASR::down_cast<ASR::symbol_t>(
                 ASR::make_Variable_t(al, loc, fn_scope, s2c(al, arg_name),
                     nullptr, 0, ASR::intentType::Unspecified, nullptr, nullptr,
@@ -19749,10 +19750,11 @@ public:
 
     // Convenience wrapper: creates interface from an existing FunctionType.
     void create_interface_for_procedure_variable(ASR::Variable_t* proc_var,
-            const Location& loc, ASR::FunctionType_t* expected_type = nullptr,
-            ASR::symbol_t** arg_type_decls = nullptr) {
+            const Location& loc, Vec<ASR::symbol_t*>& arg_type_decls,
+            ASR::FunctionType_t* expected_type = nullptr) {
         ASR::FunctionType_t* func_type = expected_type ? expected_type :
             ASR::down_cast<ASR::FunctionType_t>(proc_var->m_type);
+        LCOMPILERS_ASSERT(arg_type_decls.size() == func_type->n_arg_types)
         ASR::ttype_t* return_type = func_type->m_return_var_type;
         if (!return_type) {
             return_type = ASRUtils::TYPE(ASR::make_Real_t(al, loc, 8));
@@ -19761,8 +19763,8 @@ public:
         std::string var_name = proc_var->m_name;
         ASR::ttype_t* iface_type = create_or_update_implicit_interface(
             proc_var, loc, func_type->m_arg_types, func_type->n_arg_types,
-            return_type, parent_scope, var_name, current_scope,
-            arg_type_decls);
+            return_type, parent_scope, var_name,
+            arg_type_decls, current_scope);
         (void)iface_type;
     }
 
