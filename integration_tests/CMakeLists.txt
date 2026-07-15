@@ -4725,6 +4725,7 @@ RUN(NAME coarrays_22 EXTRA_ARGS --coarray=true)
 RUN(NAME coarrays_23 EXTRA_ARGS --coarray=true)
 RUN(NAME coarrays_24 EXTRA_ARGS --coarray=true)
 
+RUN(NAME coarrays_26 EXTRA_ARGS --coarray=true)
 RUN(NAME coarrays_27 EXTRA_ARGS --coarray=true NUM_IMAGES=4)
 
 RUN(NAME gpu_metal_01 LABELS gfortran llvm metal)
