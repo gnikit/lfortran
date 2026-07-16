@@ -51,8 +51,13 @@ class PRIFInterface {
                                         ASR::abiType abi, ASR::accessType access,
                                         ASR::presenceType presence, bool value_attr) {
             ASRUtils::ASRBuilder b(al, loc);
-            b.VariableDeclaration(symtab, name, type, intent, type_decl, abi, value_attr);
-            ASR::symbol_t *sym = symtab->get_symbol(name);
+            // Use a unique name to avoid clashing with user-defined variables
+            // that may already exist in `symtab` (e.g. a user variable
+            // literally named "stat"); internal compiler-generated names
+            // must never collide with source-level identifiers.
+            std::string unique_name = symtab->get_unique_name(name, false);
+            b.VariableDeclaration(symtab, unique_name, type, intent, type_decl, abi, value_attr);
+            ASR::symbol_t *sym = symtab->get_symbol(unique_name);
             LCOMPILERS_ASSERT(sym);
             ASR::Variable_t *var = ASR::down_cast<ASR::Variable_t>(sym);
             var->m_access = access;
