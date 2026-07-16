@@ -49,8 +49,8 @@ integer, parameter :: stat_failed_image = 4              ! F2018
 integer, parameter :: stat_unlocked_failed_image = 5     ! F2018
 
 ! Atomic kinds (F2018)
-integer, parameter :: atomic_int_kind = 4
-integer, parameter :: atomic_logical_kind = 4
+integer, parameter :: atomic_int_kind = 8
+integer, parameter :: atomic_logical_kind = 8
 
 ! Team constants (F2018)
 integer, parameter :: initial_team = 0
