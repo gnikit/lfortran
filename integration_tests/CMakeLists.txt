@@ -4605,6 +4605,7 @@ RUN(NAME str_to_char LABELS gfortran llvm)
 RUN(NAME polymorphic_select_type_01 LABELS gfortran llvm)
 RUN(NAME polymorphic_select_type_02 LABELS gfortran llvm)
 RUN(NAME defined_op_match_01 LABELS gfortran llvm)
+RUN(NAME defined_op_match_02 LABELS gfortran llvm)
 
 #test for forward declaration of derived type
 RUN(NAME proc_ptr_nopass_01 LABELS gfortran llvm llvm_wasm llvm_wasm_emcc)
