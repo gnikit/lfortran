@@ -1682,6 +1682,10 @@ char** parse_fortran_format(const fchar* format, const int64_t format_len, int64
                 last_was_descriptor = false;
                 comma_seen = false;
                 break;
+            case '$' :
+                last_was_descriptor = false;
+                comma_seen = false;
+                break;
             case '*' :
                 format_values_2[format_values_count++] = substring(cformat, index, index+1);
                 break;
