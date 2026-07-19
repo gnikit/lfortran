@@ -500,6 +500,12 @@ semantic error: length specifier is only valid for character type
 869 |         integer :: i*2
     |                    ^^^ 
 
+semantic error: Derived type `t_pair_local` is not defined
+   --> tests/errors/continue_compilation_1.f90:910:9
+    |
+910 |         type(t_pair_local) :: x
+    |         ^^^^^^^^^^^^^^^^^^ Type used here is not defined in any scope
+
 semantic error: Symbol 'undeclared_proc' not declared
    --> tests/errors/continue_compilation_1.f90:640:9
     |
