@@ -5569,6 +5569,14 @@ public:
                                                             ASRUtils::EXPR(ASR::make_RealConstant_t(al, x.base.base.loc,
                                                                 rc->m_r, rc->m_type)),
                                                             ASR::cast_kindType::RealToComplex, v->m_type, complex_value, nullptr));
+                                                    } else if (ASRUtils::is_integer(*v->m_type)) {
+                                                        ASR::expr_t* integer_value = ASRUtils::EXPR(
+                                                            ASR::make_IntegerConstant_t(al, x.base.base.loc,
+                                                                (int64_t)rc->m_r, v->m_type));
+                                                        init_val = ASRUtils::EXPR(ASR::make_Cast_t(al, x.base.base.loc,
+                                                            ASRUtils::EXPR(ASR::make_RealConstant_t(al, x.base.base.loc,
+                                                                rc->m_r, rc->m_type)),
+                                                            ASR::cast_kindType::RealToInteger, v->m_type, integer_value, nullptr));
                                                     } else {
                                                         init_val = ASRUtils::EXPR(ASR::make_RealConstant_t(al, x.base.base.loc, rc->m_r, v->m_type));
                                                     }
@@ -5632,6 +5640,18 @@ public:
                                                                 ASR::cast_kindType::ComplexToComplex, v->m_type, value, nullptr));
                                                         }
                                                     }
+                                                }
+                                                // The folds above only handle initializers that are a bare
+                                                // numeric literal. When the initializer is a constant expression
+                                                // whose value type still differs from the declared parameter
+                                                // type (e.g. `integer :: k` with `parameter (k = -125.0)`, whose
+                                                // initializer is a RealUnaryMinus rather than a bare
+                                                // RealConstant), insert an explicit Cast so the stored value
+                                                // matches the variable's type. set_converted_value is a no-op
+                                                // when the types already match.
+                                                if (ASRUtils::expr_value(init_val)) {
+                                                    ImplicitCastRules::set_converted_value(al, x.base.base.loc,
+                                                        &init_val, ASRUtils::expr_type(init_val), v->m_type, diag);
                                                 }
                                                 v->m_symbolic_value = init_val;
                                                 v->m_value = ASRUtils::expr_value(init_val);
