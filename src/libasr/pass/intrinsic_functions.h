@@ -1315,7 +1315,9 @@ namespace Scale {
         */
 
        //TODO: Radix for most of the device is 2, so we can use the b.i2r_t(2, real32) instead of args[1]. Fix (find a way to get the radix of the device and use it here)
-        body.push_back(al, b.Assignment(result, b.Mul(args[0], b.i2r_t(b.Pow(b.i_t(2, arg_types[1]), args[1]), return_type))));
+        // The exponentiation must be done in floating point: `i` may be negative,
+        // and integer 2**i truncates to 0 for any i < 0.
+        body.push_back(al, b.Assignment(result, b.Mul(args[0], b.Pow(b.f_t(2.0, return_type), b.i2r_t(args[1], return_type)))));
         ASR::symbol_t *f_sym = make_ASR_Function_t(fn_name, fn_symtab, dep, args, body, result, ASR::abiType::Source, ASR::deftypeType::Implementation, nullptr);
         scope->add_symbol(fn_name, f_sym);
         return b.Call(f_sym, new_args, return_type, nullptr);
