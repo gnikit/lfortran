@@ -20251,6 +20251,66 @@ public:
         tmp = builder->CreateCall(fn, {unit_val, status, status_len, iostat});
     }
 
+    bool has_nonadvancing_format(ASR::expr_t *expr) {
+        if (!expr || !ASR::is_a<ASR::StringFormat_t>(*expr)) {
+            return false;
+        }
+        ASR::expr_t *format_expr = ASR::down_cast<ASR::StringFormat_t>(
+            expr)->m_fmt;
+        if (!format_expr) {
+            return false;
+        }
+        ASR::expr_t *format_value = ASRUtils::expr_value(format_expr);
+        if (format_value) {
+            format_expr = format_value;
+        }
+        if (!ASR::is_a<ASR::StringConstant_t>(*format_expr)) {
+            return false;
+        }
+
+        const std::string format = ASR::down_cast<ASR::StringConstant_t>(
+            format_expr)->m_s;
+        char quote = '\0';
+        for (size_t i = 0; i < format.size(); i++) {
+            char current = format[i];
+            if (quote != '\0') {
+                if (current == quote) {
+                    if (i + 1 < format.size() && format[i + 1] == quote) {
+                        i++;
+                    } else {
+                        quote = '\0';
+                    }
+                }
+                continue;
+            }
+            if (current == '\'' || current == '"') {
+                quote = current;
+                continue;
+            }
+            if (std::isdigit(static_cast<unsigned char>(current))) {
+                size_t repeat = 0;
+                size_t j = i;
+                while (j < format.size() &&
+                        std::isdigit(static_cast<unsigned char>(format[j]))) {
+                    if (repeat < format.size()) {
+                        repeat = std::min(format.size(),
+                            repeat * 10 + static_cast<size_t>(format[j] - '0'));
+                    }
+                    j++;
+                }
+                if (j < format.size() &&
+                        (format[j] == 'h' || format[j] == 'H')) {
+                    i = j + std::min(repeat, format.size() - j - 1);
+                    continue;
+                }
+            }
+            if (current == '$') {
+                return true;
+            }
+        }
+        return false;
+    }
+
     void visit_Print(const ASR::Print_t &x) {
         handle_print(x.m_text, nullptr);
     }
@@ -20662,6 +20722,11 @@ public:
         }
         if (x.m_end) {
             std::tie(end_data, end_len) = get_string_data_and_length(x.m_end);
+        } else if (x.n_values == 1 &&
+                has_nonadvancing_format(x.m_values[0])) {
+            end_data = LCompilers::create_global_string_ptr(
+                context, *module, *builder, "");
+            end_len = llvm::ConstantInt::get(context, llvm::APInt(64, 0));
         } else {
             end_data = LCompilers::create_global_string_ptr(context, *module, *builder, "\n");
             end_len = llvm::ConstantInt::get(context, llvm::APInt(64, 1));
@@ -21159,9 +21224,12 @@ public:
 
         // End string (always computed once)
         llvm::Value *end_data, *end_len;
-        if (end_expr == nullptr) {
+        if (end_expr == nullptr && !has_nonadvancing_format(arg)) {
             end_data = LCompilers::create_global_string_ptr(context, *module, *builder, "\n");
             end_len = llvm::ConstantInt::get(context, llvm::APInt(32, 1));
+        } else if (end_expr == nullptr) {
+            end_data = LCompilers::create_global_string_ptr(context, *module, *builder, "");
+            end_len = llvm::ConstantInt::get(context, llvm::APInt(32, 0));
         } else {
             std::tie(end_data, end_len) = get_string_data_and_length(end_expr);
             end_len = builder->CreateTrunc(end_len, llvm::Type::getInt32Ty(context));
