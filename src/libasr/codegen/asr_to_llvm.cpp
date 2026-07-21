@@ -10040,6 +10040,13 @@ public:
                         ASR::is_a<ASR::FunctionType_t>(*value_type)) {
                 llvm::Type* llvm_value_type = llvm_utils->get_type_from_ttype_t_util(x.m_value, value_type, module.get());
                 llvm_value = llvm_utils->CreateLoad2(llvm_value_type, llvm_value);
+                // Bitcast procedure pointer if source and target LLVM types differ.
+                // This happens under --implicit-interface when a typed procedure
+                // pointer (with concrete interface) is assigned to a generic
+                // procedure() pointer slot (void()*).
+                if (compiler_options.implicit_interface) {
+                    llvm_value = llvm_utils->CreateBitCastForStore(llvm_value, llvm_target);
+                }
                 builder->CreateStore(llvm_value, llvm_target);
             } else if (is_target_class &&
                        !ASRUtils::is_array(target_type) &&
@@ -10667,6 +10674,13 @@ public:
                         llvm_target_contents_type->getPointerTo(), llvm_target);
                     builder->CreateStore(llvm_value, loaded_target);
                 } else {
+                    // Bitcast procedure pointer if source and target LLVM types
+                    // differ. This handles Pointer(FunctionType) associations under
+                    // --implicit-interface where the source has a concrete interface
+                    // and the target has a generic procedure() slot (void()*).
+                    if (compiler_options.implicit_interface) {
+                        llvm_value = llvm_utils->CreateBitCastForStore(llvm_value, llvm_target);
+                    }
                     builder->CreateStore(llvm_value, llvm_target);
                 }
             }
