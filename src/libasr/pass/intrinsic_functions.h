@@ -6087,11 +6087,11 @@ namespace StringLenTrim {
             end function
         */
 
-        body.push_back(al, b.Assignment(result, b.StringLen(args[0])));
-        body.push_back(al, b.If(b.NotEq(result, b.i32(0)), {
+        body.push_back(al, b.Assignment(result, b.i2i_t(b.StringLen(args[0]), return_type)));
+        body.push_back(al, b.If(b.NotEq(result, b.i_t(0, return_type)), {
             b.While(b.Eq(b.StringItem(args[0], result), b.StringConstant(" ", character(1))), {
-                b.Assignment(result, b.Sub(result, b.i32(1))),
-                b.If(b.Eq(result, b.i32(0)), {
+                b.Assignment(result, b.Sub(result, b.i_t(1, return_type))),
+                b.If(b.Eq(result, b.i_t(0, return_type)), {
                     b.Exit()
                 }, {})
             })
