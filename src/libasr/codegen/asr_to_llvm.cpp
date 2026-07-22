@@ -16922,6 +16922,17 @@ public:
                     nullptr, desc_type_asr, module.get());
                 data_ptr = llvm_utils->CreateLoad2(
                     desc_llvm_type->getPointerTo(), data_ptr);
+            } else if ((ASR::is_a<ASR::Allocatable_t>(*item_type_asr) ||
+                        ASR::is_a<ASR::Pointer_t>(*item_type_asr)) &&
+                       !ASRUtils::is_character(*item_type_asr)) {
+                // For scalar allocatables/pointers, the symtab value stores the
+                // address of the target. Load through it so the namelist item
+                // points at the target's data, not at the pointer variable.
+                ASR::ttype_t* tgt_type_asr = ASRUtils::type_get_past_allocatable_pointer(item_type_asr);
+                llvm::Type* tgt_llvm_type = llvm_utils->get_type_from_ttype_t_util(
+                    nullptr, tgt_type_asr, module.get());
+                data_ptr = llvm_utils->CreateLoad2(
+                    tgt_llvm_type->getPointerTo(), data_ptr);
             }
 
             // Determine type code
